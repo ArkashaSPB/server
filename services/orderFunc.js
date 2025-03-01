@@ -133,35 +133,46 @@ export const addOrder = async (orderData) => {
 export const getOrders = async () => {
 	const connection = await connectToDatabase();
 	try {
-		// Получаем все заказы
+		// Получаем все заказы (только те, у которых status != 0)
 		const [orders] = await connection.query(`
-			SELECT orders.*, users.mail, users.name FROM orders 
-   			 LEFT JOIN users ON users.id = orders.user ORDER BY orders.status, orders.id DESC`);
+        SELECT orders.*, users.mail, users.name FROM orders
+                                                         LEFT JOIN users ON users.id = orders.user
+        ORDER BY orders.status, orders.id DESC
+		`);
 
 		// Получаем все товары, связанные с заказами
-		const [orderItems] = await connection.query('' +
-			`SELECT orders_goods.*, country.img as img2, category.img as img1  
-				FROM orders_goods LEFT JOIN goods ON goods.id = orders_goods.good
-				    LEFT JOIN category ON goods.category = category.kod 
-				    LEFT JOIN country ON goods.country = country.kod`);
+		const [orderItems] = await connection.query(`
+			SELECT orders_goods.*, country.img as img2, category.img as img1  
+			FROM orders_goods 
+			LEFT JOIN goods ON goods.id = orders_goods.good
+			LEFT JOIN category ON goods.category = category.kod 
+			LEFT JOIN country ON goods.country = country.kod
+		`);
 
-		console.log(orderItems)
+		// Получаем данные об оплате, связанные с заказами (где `oplata.orderId = orders.id`)
+		const [payments] = await connection.query(`
+			SELECT oplata.* FROM oplata
+			INNER JOIN orders ON orders.id = oplata.orderId
+			WHERE orders.status != 0
+		`);
 
-		// Группируем товары по id заказа
-		const ordersWithItems = orders.map((order) => {
+		// Группируем товары и оплату по `id` заказа
+		const ordersWithDetails = orders.map((order) => {
 			return {
 				...order,
-				items: orderItems.filter((item) => item.order === order.id),
+				items: orderItems.filter((item) => item.order === order.id), // Фильтруем товары по заказу
+				payment: payments.find((pay) => pay.orderId === order.id) || null, // Привязываем оплату
 			};
 		});
 
-		return ordersWithItems;
+		return ordersWithDetails;
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
 	} finally {
 		await connection.end();
 	}
 };
+
 
 export const ordersStatus = async (id) => {
 	const connection = await connectToDatabase();

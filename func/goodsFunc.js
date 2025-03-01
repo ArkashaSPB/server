@@ -100,7 +100,9 @@ SELECT goods.*, category.img as img1, country.img as img2 FROM goods
     LEFT JOIN category ON goods.category = category.kod
     LEFT JOIN country ON goods.country = country.kod
 `);
-			const [category]  = await connection.query(`SELECT * FROM category`);
+			const [category]  = await connection.query(`SELECT DISTINCT c.*
+                                                  FROM category c
+                                                           INNER JOIN goods g ON c.kod = g.category`);
 			const [country]  = await connection.query(`SELECT * FROM country`);
 			return {
 				goods: rows,

@@ -3,9 +3,8 @@ import crypto from 'crypto';
 import {getSahblonFunc, sendMail} from "../func/smtp.js";
 
 // Регистрация пользователя
-export const regUserFunc = async (name, password, email) => {
+export const regUserFunc = async (password, email) => {
 	const connection = await connectToDatabase();
-
 	if(!email || !password){
 		return {status: false, message: 'Не указан Email или пароль'};
 	}
@@ -20,17 +19,13 @@ export const regUserFunc = async (name, password, email) => {
 		//const token = crypto.createHash('sha256').update(password).digest('hex');
 		const token = crypto.randomBytes(16).toString('hex');
 
-
 		// Сохранение пользователя в базу данных
 		const [result] = await connection.query(
-			'INSERT INTO users (name, pass, mail, token) VALUES (?, ?, ?, ?)',
-			[name, password, email, token]
+			'INSERT INTO users (pass, mail, token) VALUES ( ?, ?, ?)',
+			[ password, email, token]
 		);
 
 		const userId = result.insertId
-
-
-
 		const shablon = await getSahblonFunc(1);
 
 		if (shablon) {
@@ -66,8 +61,6 @@ export const authUserFunc = async (email, password) => {
 		if (user.length === 0) {
 			throw new Error('Неверный email или пароль.');
 		}
-
-
 		let token = ''
 	if (!user[0].token ){
 		token = crypto.randomBytes(16).toString('hex');
@@ -85,7 +78,6 @@ export const authUserFunc = async (email, password) => {
 		await connection.close();
 	}
 };
-
 
 export const checkUser = async (token) => {
 	const connection = await connectToDatabase();
