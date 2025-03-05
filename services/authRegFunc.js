@@ -27,7 +27,6 @@ export const regUserFunc = async (password, email) => {
 
 		const userId = result.insertId
 		const shablon = await getSahblonFunc(1);
-
 		if (shablon) {
 			const t = `
         <p>Ваш пароль: <span style="font-size: 1.2rem">${password}</span></p>
@@ -48,6 +47,45 @@ export const regUserFunc = async (password, email) => {
 		throw new Error('Ошибка регистрации пользователя: ' + error.message);
 	} finally {
 		await connection.close();
+	}
+};
+
+
+export const getPassFunc = async (email) => {
+	const connection = await connectToDatabase();
+
+	try {
+		// Проверяем, есть ли email в базе
+		const [rows] = await connection.execute(
+			"SELECT * FROM users WHERE mail = ?",
+			[email]
+		);
+		if (rows.length === 0) {
+			return {success: false, message: 'Email не найден'};
+		}
+		// Генерируем новый пароль
+		const newPassword = Math.floor(100000 + Math.random() * 900000).toString();
+
+		// Обновляем пароль в базе
+		await connection.execute(
+			"UPDATE users SET pass = ? WHERE mail = ?",
+			[newPassword, email]
+		);
+
+		const shablon = await getSahblonFunc(2);
+		if (shablon) {
+			const t = `
+        <p>Ваш новый пароль: <span style="font-size: 1.2rem">${newPassword}</span></p>
+    `;
+			const newText = shablon.text.replace('<body>', t);
+			sendMail(email, shablon.subject, newText);
+		}
+
+		return { success: true, message: "Пароль отправлен на почту" };
+	} catch (error) {
+		throw new Error("Ошибка при работе с базой данных: " + error.message);
+	} finally {
+		await connection.end();
 	}
 };
 

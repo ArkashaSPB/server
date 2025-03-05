@@ -96,7 +96,7 @@ export async function getGoodsClient() {
 	const connection = await connectToDatabase();
 	try {
 			const [rows]  = await connection.query(`
-SELECT goods.*, category.img as img1, country.img as img2 FROM goods 
+SELECT goods.*, category.img as img1, country.img as img2, category.name as catName, country.name as coName FROM goods 
     LEFT JOIN category ON goods.category = category.kod
     LEFT JOIN country ON goods.country = country.kod
 `);

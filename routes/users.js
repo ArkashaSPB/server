@@ -1,14 +1,14 @@
 import express from "express";
 import {getUserOneFunc, getUsersAll, getWho} from "../services/usersFunc.js";
-import {authUserFunc, checkUser, regUserFunc} from "../services/authRegFunc.js";
+import {authUserFunc, checkUser, getPassFunc, regUserFunc} from "../services/authRegFunc.js";
 
 
 const router = express.Router();
 
 router.post('/reg', async (req, res) => {
-	const { name, password, email } = req.body;
+	const {  password, email } = req.body;
 	try {
-		const response = await regUserFunc(name, password, email);
+		const response = await regUserFunc( password, email);
 		res.json(response);
 	} catch (error) {
 		res.status(400).json({ error: error.message });
@@ -16,6 +16,7 @@ router.post('/reg', async (req, res) => {
 });
 
 // Авторизация пользователя
+
 router.post('/auth', async (req, res) => {
 	const { email, password } = req.body;
 	try {
@@ -25,6 +26,18 @@ router.post('/auth', async (req, res) => {
 		res.status(401).json({ error: error.message });
 	}
 });
+
+router.patch('/auth', async (req, res) => {
+	const { email} = req.body;
+	try {
+		const response = await getPassFunc(email);
+		res.json(response);
+	} catch (error) {
+		res.status(401).json({ error: error.message });
+	}
+});
+
+
 
 router.get('/check/:token', async (req, res) => {
 	const { token } = req.params;

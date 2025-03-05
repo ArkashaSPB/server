@@ -142,7 +142,8 @@ export const getOrders = async () => {
 
 		// Получаем все товары, связанные с заказами
 		const [orderItems] = await connection.query(`
-			SELECT orders_goods.*, country.img as img2, category.img as img1  
+			SELECT orders_goods.*, country.img as img2, category.img as img1,
+			       category.name as catName, country.name as countryName
 			FROM orders_goods 
 			LEFT JOIN goods ON goods.id = orders_goods.good
 			LEFT JOIN category ON goods.category = category.kod 
@@ -153,7 +154,7 @@ export const getOrders = async () => {
 		const [payments] = await connection.query(`
 			SELECT oplata.* FROM oplata
 			INNER JOIN orders ON orders.id = oplata.orderId
-			WHERE orders.status != 0
+			
 		`);
 
 		// Группируем товары и оплату по `id` заказа

@@ -38,7 +38,7 @@ export  const checkTron = async  () => {
 		// Фильтруем транзакции, исключая те, которые уже были обработаны
 		const filteredTransactions = transactions.filter(transaction => !processedTrids.includes(transaction.transaction_id));
 
-		if (dan.length) {
+			if (dan.length) {
 				for (let item of dan) {
 					const { summa, orderId, id, date } = item;
 					for (let transaction of filteredTransactions) {
@@ -48,9 +48,12 @@ export  const checkTron = async  () => {
 							const dateObj = new Date(date);
 							const timestamp = Math.floor(dateObj.getTime() / 1000);
 							if (timestamp < date2) {
-								// Проверяем, если запись существует в coin_user
-								console.log(transaction.transaction_id)
-								await connection.execute(`UPDATE oplata SET trid = ?, status = 1 WHERE id  = ? `, [transaction.transaction_id, id])
+								console.log(transaction.transaction_id, orderId, summa)
+								await connection.execute(
+									`UPDATE oplata SET trid = ?, status = 1, dateCheck = FROM_UNIXTIME(?) WHERE id = ?`,
+									[transaction.transaction_id, date2, id]
+								);
+
 								await connection.execute(`UPDATE orders SET oplata = 1 WHERE id = ${orderId}`)
 								break;
 							}
