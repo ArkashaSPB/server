@@ -4,6 +4,7 @@ import {getAllOplata, getMyTron, getSettingFunc, settingFunc} from "../services/
 const router = express.Router();
 
 import {checkTron} from "../cronJobs.js";
+import {getHistoryFunc} from "../func/history.js";
 
 router.get('/', async (req, res) => {
 	try {
@@ -57,6 +58,15 @@ router.get('/oplata', async (req, res) => {
 router.get('/tron', async (req, res) => {
 	try {
 		const response = await getMyTron();
+		res.json(response);
+	} catch (error) {
+		res.status(400).json({ error: error.message });
+	}
+});
+
+router.get('/log', async (req, res) => {
+	try {
+		const response = await getHistoryFunc();
 		res.json(response);
 	} catch (error) {
 		res.status(400).json({ error: error.message });

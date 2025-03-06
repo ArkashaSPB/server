@@ -166,7 +166,7 @@ router.post("/order", async  (req, res) => {
 		const  otvet = await addOrder(massive);
 		res.status(200).json(otvet);
 	} catch (error) {
-		console.error('Ошибка при удалении категории :', error);
+		console.error('Ошибка при добавлении заказа :', error);
 		res.status(500).json({ message: 'Произошла ошибка при обработке запроса' });
 	}
 })
@@ -176,7 +176,7 @@ router.get("/order", async  (req, res) => {
 		const  otvet = await getOrders();
 		res.status(200).json(otvet);
 	} catch (error) {
-		console.error('Ошибка при удалении категории :', error);
+		console.error('Ошибка при заказов :', error);
 		res.status(500).json({ message: 'Произошла ошибка при обработке запроса' });
 	}
 })

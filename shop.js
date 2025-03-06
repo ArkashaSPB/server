@@ -6,7 +6,6 @@ import upload from './upload.js'; // Импортируем multer
 //import './cronJobs.js';
 
 import cors from 'cors';
-// import  './bot/bot.js';
 import {cityRouter, goodsRouter, mailRouter, messageRouter, settingRouter, usersRouter} from "./routes/index.js"; // Импортируем бота
 
 dotenv.config();
@@ -38,3 +37,4 @@ app.use('/api/img', express.static('photo'));
 app.listen(PORT, '0.0.0.0', () => {
 	console.log(`Сервер запущен на порту ${PORT}`);
 });
+

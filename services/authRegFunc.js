@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../func/db.js';
 import crypto from 'crypto';
 import {getSahblonFunc, sendMail} from "../func/smtp.js";
+import {addHistoryFunc} from "../func/history.js";
 
 // Регистрация пользователя
 export const regUserFunc = async (password, email) => {
@@ -35,6 +36,8 @@ export const regUserFunc = async (password, email) => {
 			const newText = shablon.text.replace('<body>', t);
 			sendMail(email, shablon.subject, newText);
 		}
+		const t = `${email} зарегистрировался`;
+		addHistoryFunc('Регистрация', t)
 
 		return {
 			status : true,
@@ -55,6 +58,10 @@ export const getPassFunc = async (email) => {
 	const connection = await connectToDatabase();
 
 	try {
+
+		const t = `${email}  восстановил пароль`;
+		addHistoryFunc('Восстановление пароля', t)
+
 		// Проверяем, есть ли email в базе
 		const [rows] = await connection.execute(
 			"SELECT * FROM users WHERE mail = ?",
@@ -80,6 +87,7 @@ export const getPassFunc = async (email) => {
 			const newText = shablon.text.replace('<body>', t);
 			sendMail(email, shablon.subject, newText);
 		}
+
 
 		return { success: true, message: "Пароль отправлен на почту" };
 	} catch (error) {
@@ -107,8 +115,11 @@ export const authUserFunc = async (email, password) => {
 	}
 		// Генерация токена
 		// Сохранение токена в базе данных
+
 		await connection.query('UPDATE users SET token = ? WHERE id = ?', [token, user[0].id]);
 
+		const t = `${email} авторизовался`;
+		addHistoryFunc('Авторизация', t)
 		return { message: 'Авторизация успешна', token };
 	} catch (error) {
 		throw new Error('Ошибка авторизации: ' + error.message);

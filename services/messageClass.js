@@ -1,4 +1,4 @@
-import bot from '../bot/bot.js'; // Подключаем бота
+// import bot from '../bot/bot.js'; // Подключаем бота
 import { connectToDatabase } from '../func/db.js'; // Подключаем функцию для подключения к базе
 
 class MessageQueue {

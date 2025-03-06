@@ -9,7 +9,7 @@ export const settingFunc = async (data) => {
 		// Создаем SQL-запрос для обновления данных
 		const query = `
         UPDATE setting
-        SET smptMail = ?, smtpName = ?, smtpPass = ?, smtpPort = ?, smtpServer = ?, smtpTyp = ?, tron = ?
+        SET smptMail = ?, smtpName = ?, smtpPass = ?, smtpPort = ?, smtpServer = ?, smtpTyp = ?, tron = ?, admin = ? 
         WHERE id = ?
 		`;
 
@@ -24,6 +24,7 @@ export const settingFunc = async (data) => {
 			data.smtpServer,
 			data.smtpTyp,
 			data.tron,
+			data.admin,
 			data.id // id необходимо для обновления конкретной записи
 		]);
 

@@ -1,5 +1,6 @@
 import { connectToDatabase } from '../func/db.js';
 import {getSahblonFunc, sendMail} from "../func/smtp.js";
+import {addHistoryFunc} from "../func/history.js";
 
 
 const checkOrder = async (connection, id) => {
@@ -79,9 +80,9 @@ export const addOrder = async (orderData) => {
 						(item) => `
 						<tr>
 							<td style="border: 1px solid #ddd; padding: 8px;">${item.title}</td>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.price} ₽</td>
+							<td style="border: 1px solid #ddd; padding: 8px;">${item.price}$</td>
 							<td style="border: 1px solid #ddd; padding: 8px;">${item.quantity}</td>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.price * item.quantity} ₽</td>
+							<td style="border: 1px solid #ddd; padding: 8px;">${item.price * item.quantity}$</td>
 						</tr>`
 					)
 					.join("");
@@ -109,9 +110,23 @@ export const addOrder = async (orderData) => {
 						</tfoot>
 					</table>
 				`;
-
-				const newText = shablon.text.replace('<body>', t);
+				const tu = `<p>Ваш заказ ${orderId} создан.</p> 
+				${t}`
+				const newText = shablon.text.replace('<body>', tu);
 				sendMail(email[0].mail, shablon.subject, newText);
+
+
+				const shablon2 = await getSahblonFunc(5);
+				const [adminRow] = await connection.execute(`SELECT admin FROM setting`);
+				const admin = adminRow.length > 0 ? adminRow[0].admin : null; // Проверка на наличие admin
+				const t2 = `<p>Заказ ${orderId} от пользователя ${email[0].mail} создан</p>
+				 ${t}`
+				const newText2  = shablon2.text.replace('<body>', t2);
+				sendMail(admin, shablon2.subject, newText2);
+
+				const name = `${email[0].mail} создал заказ ${orderId}`;
+				addHistoryFunc('Создание заказа', name)
+
 			}
 		}
 
@@ -133,7 +148,7 @@ export const addOrder = async (orderData) => {
 export const getOrders = async () => {
 	const connection = await connectToDatabase();
 	try {
-		// Получаем все заказы (только те, у которых status != 0)
+		// Получаем все заказы
 		const [orders] = await connection.query(`
         SELECT orders.*, users.mail, users.name FROM orders
                                                          LEFT JOIN users ON users.id = orders.user
@@ -142,27 +157,32 @@ export const getOrders = async () => {
 
 		// Получаем все товары, связанные с заказами
 		const [orderItems] = await connection.query(`
-			SELECT orders_goods.*, country.img as img2, category.img as img1,
-			       category.name as catName, country.name as countryName
-			FROM orders_goods 
-			LEFT JOIN goods ON goods.id = orders_goods.good
-			LEFT JOIN category ON goods.category = category.kod 
-			LEFT JOIN country ON goods.country = country.kod
+        SELECT orders_goods.*, country.img as img2, category.img as img1,
+               category.name as catName, country.name as countryName
+        FROM orders_goods
+                 LEFT JOIN goods ON goods.id = orders_goods.good
+                 LEFT JOIN category ON goods.category = category.kod
+                 LEFT JOIN country ON goods.country = country.kod
 		`);
 
-		// Получаем данные об оплате, связанные с заказами (где `oplata.orderId = orders.id`)
+		// Получаем ВСЕ оплаты, связанные с заказами
 		const [payments] = await connection.query(`
-			SELECT oplata.* FROM oplata
-			INNER JOIN orders ON orders.id = oplata.orderId
-			
+        SELECT oplata.* FROM oplata
+                                 INNER JOIN orders ON orders.id = oplata.orderId
 		`);
 
-		// Группируем товары и оплату по `id` заказа
+		// Группируем оплаты по `orderId` и берем ТОЛЬКО ПОСЛЕДНЮЮ оплату
+		const lastPaymentsByOrder = payments.reduce((acc, pay) => {
+			acc[pay.orderId] = pay; // Всегда перезаписываем последним значением (последняя оплата)
+			return acc;
+		}, {});
+
+		// Группируем товары по заказу + добавляем только последнюю оплату
 		const ordersWithDetails = orders.map((order) => {
 			return {
 				...order,
 				items: orderItems.filter((item) => item.order === order.id), // Фильтруем товары по заказу
-				payment: payments.find((pay) => pay.orderId === order.id) || null, // Привязываем оплату
+				payment: lastPaymentsByOrder[order.id] || null, // Берем последнюю оплату (объект), если есть
 			};
 		});
 
@@ -173,6 +193,10 @@ export const getOrders = async () => {
 		await connection.end();
 	}
 };
+
+
+
+
 
 
 export const ordersStatus = async (id) => {
@@ -207,6 +231,9 @@ export const addOplata = async (id) => {
 		);
 		// Проверяем, если заказ найден
 		if (order[0] && order[0].id) {
+
+			//удаляем если была оплата если у нее был статус 0
+
 			// Вставляем оплату
 			const [res] = await connection.execute(
 				`INSERT INTO oplata (summa, orderId) VALUES (?, ?)`,
@@ -249,18 +276,21 @@ export const editOplata = async (id) => {
 	const connection = await connectToDatabase();
 	try {
 		const [res] = await connection.execute(
-			`UPDATE oplata SET status = 2 WHERE id = ?`,
+			`UPDATE oplata SET status = 2, dateSubmit =  NOW() WHERE id = ?`,
 			[id]
 		);
-
-
 		if (res.affectedRows > 0) {
+
+			const [res] = await connection.execute(`SELECT orders.id, users.mail FROM orders
+													INNER JOIN oplata ON oplata.orderId = orders.id
+													INNER JOIN users ON users.id = orders.user  WHERE oplata.id = ?`, [id]);
+				const t = ` ${res[0].mail} подтвердил оплату ${res[0].id}`;
+				addHistoryFunc('Подтверждение оплаты', t)
 			return { success: true, message: 'Статус оплаты успешно обновлен.' };
 		} else {
 			return { success: false, message: 'Ошибка при обновлении статуса оплаты.' };
 		}
 	} catch (error) {
-
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
 	} finally {
 		await connection.end();
