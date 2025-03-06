@@ -18,9 +18,7 @@ app.use(express.json());
 app.use(cors());
 // Роуты
 app.use('/api/users', usersRouter);
-
 app.use('/api/goods', goodsRouter);
-
 app.use('/api/message', messageRouter);
 app.use('/api/city', cityRouter);
 app.use('/api/setting', settingRouter);

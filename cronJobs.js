@@ -25,25 +25,25 @@ export  const checkTron = async  () => {
 // Получаем только те записи из oplata, где trid еще не установлен и статус = 2
 		const [dan] = await connection.execute(`SELECT * FROM oplata WHERE status = 2 AND trid IS NULL`);
 		if (dan.length === 0) {return}
-
 		// Получаем транзакции с TronGrid
 		const transactions = await getTronData(tron);
-
 		// Получаем уже обработанные транзакции, где status = 1
 		const [propusk] = await connection.execute(`SELECT trid FROM oplata WHERE status = 1`);
-
 		// Создаем массив из всех тридов, которые уже обработаны
 		const processedTrids = propusk.map(item => item.trid);
-
 		// Фильтруем транзакции, исключая те, которые уже были обработаны
 		const filteredTransactions = transactions.filter(transaction => !processedTrids.includes(transaction.transaction_id));
 
-			if (dan.length) {
+			if (dan.length ) {
+				// console.log(dan, transactions);
 				for (let item of dan) {
-					const { summa, orderId, id, date } = item;
+					const { orderId, id, date, summa: rawSumma } = item;
+					const summa = parseFloat(rawSumma); // или Number(rawSumma)
 					for (let transaction of filteredTransactions) {
 						// Если transaction_id и сумма совпадают
+						console.log(summa,transaction.value / 1000000)
 						if ( summa === transaction.value / 1000000) {
+
 							const date2 = transaction.block_timestamp / 1000;
 							const dateObj = new Date(date);
 							const timestamp = Math.floor(dateObj.getTime() / 1000);
@@ -53,7 +53,6 @@ export  const checkTron = async  () => {
 									`UPDATE oplata SET trid = ?, status = 1, dateCheck = FROM_UNIXTIME(?) WHERE id = ?`,
 									[transaction.transaction_id, date2, id]
 								);
-
 								await connection.execute(`UPDATE orders SET oplata = 1 WHERE id = ${orderId}`)
 								break;
 							}
@@ -66,12 +65,10 @@ export  const checkTron = async  () => {
 		} finally {
 			await connection.end();
 		}
-
-
 }
 
 
-
+checkTron();
 // Пример задания, которое выполняется каждую минуту
 cron.schedule('* * * * *', () => {
 	checkTron()
