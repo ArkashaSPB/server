@@ -1,6 +1,7 @@
 import { connectToDatabase } from '../func/db.js';
 import {getSahblonFunc, sendMail} from "../func/smtp.js";
 import {addHistoryFunc} from "../func/history.js";
+import router from "../routes/city.js";
 
 
 const checkOrder = async (connection, id) => {
@@ -139,6 +140,19 @@ export const addOrder = async (orderData) => {
 		return { success: true, orderId };
 	} catch (error) {
 		throw new Error('Ошибка при добавлении заказа: ' + error.message);
+	} finally {
+		await connection.end();
+	}
+};
+
+export const getCountNew = async () => {
+	const connection = await connectToDatabase();
+	try {
+		const [res] = await connection.query(`SELECT COUNT(id) AS count FROM orders WHERE oplata = 1 AND status = 0`);
+		// Проверяем, есть ли результат
+		return res[0]?.count || 0;
+	} catch (error) {
+		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
 	} finally {
 		await connection.end();
 	}

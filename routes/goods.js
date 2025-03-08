@@ -10,7 +10,15 @@ import {
 	getCountry,
 	getGoods, getGoodsClient, getPromo
 } from "../func/goodsFunc.js";
-import {addOplata, addOrder, editOplata, getOneOrders, getOrders, ordersStatus} from "../services/orderFunc.js";
+import {
+	addOplata,
+	addOrder,
+	editOplata,
+	getCountNew,
+	getOneOrders,
+	getOrders,
+	ordersStatus
+} from "../services/orderFunc.js";
 const router = express.Router();
 
 //товары
@@ -174,6 +182,16 @@ router.post("/order", async  (req, res) => {
 router.get("/order", async  (req, res) => {
 	try {
 		const  otvet = await getOrders();
+		res.status(200).json(otvet);
+	} catch (error) {
+		console.error('Ошибка при заказов :', error);
+		res.status(500).json({ message: 'Произошла ошибка при обработке запроса' });
+	}
+})
+
+router.get("/order/new", async  (req, res) => {
+	try {
+		const  otvet = await getCountNew();
 		res.status(200).json(otvet);
 	} catch (error) {
 		console.error('Ошибка при заказов :', error);
