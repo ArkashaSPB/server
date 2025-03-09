@@ -182,33 +182,44 @@ export async function addCountry(massive) {
 export async function editCountry(id, massive) {
 	const connection = await connectToDatabase();
 	try {
-		const query = `
-        UPDATE country
-        SET
-            name = ?,
-            kod = ?, 
-            img = ?
-        WHERE id = ?
-		`;
+		// 1️⃣ Получаем текущий `kod` перед обновлением
+		const [oldCountry] = await connection.execute(
+			`SELECT kod FROM country WHERE id = ?`,
+			[id]
+		);
 
-		// Формируем массив значений для обновления
-		const values = [
-			massive.name,
-			massive.kod,
-			massive.img,
-			id
-		];
-
-
-		// Выполняем обновление
-		const [result] = await connection.execute(query, values);
-		// Проверяем, обновлена ли строка
-		if (result.affectedRows > 0) {
-			return `Страна с id ${id} успешно обновлёна.`;
-		} else {
+		if (!oldCountry.length) {
 			return `Страна с id ${id} не найдена.`;
 		}
 
+		const oldKod = oldCountry[0].kod;
+		const newKod = massive.kod;
+
+		// 2️⃣ Обновляем страну
+		const query = `
+            UPDATE country
+            SET name = ?, kod = ?
+            WHERE id = ?
+        `;
+		const values = [massive.name, newKod, id];
+
+		const [result] = await connection.execute(query, values);
+
+		// 3️⃣ Если `kod` изменился, обновляем у товаров
+		if (oldKod !== newKod) {
+			console.log(`Kod страны изменился: ${oldKod} → ${newKod}, обновляем товары...`);
+
+			const updateGoodsQuery = `
+                UPDATE goods
+                SET country = ?
+                WHERE country = ?
+            `;
+			await connection.execute(updateGoodsQuery, [newKod, oldKod]);
+		}
+
+		return result.affectedRows > 0
+			? `Страна с id ${id} успешно обновлена.`
+			: `Страна с id ${id} не найдена.`;
 
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
@@ -216,23 +227,48 @@ export async function editCountry(id, massive) {
 		await connection.end();
 	}
 }
+
 
 export async function delCountry(id) {
 	const connection = await connectToDatabase();
 	try {
-		const query = `DELETE FROM country WHERE id = ?`;
-		const [result] = await connection.query(query, [id]);
-		if (result.affectedRows > 0) {
-			return `Страна с id ${id} успешно удалёна.`;
-		} else {
+		// 1️⃣ Получаем `kod` страны перед удалением
+		const [country] = await connection.execute(
+			`SELECT kod FROM country WHERE id = ?`,
+			[id]
+		);
+
+		if (!country.length) {
 			return `Страна с id ${id} не найдена.`;
 		}
+
+		const kod = country[0].kod;
+
+		// 2️⃣ Проверяем, есть ли товары с этим kod
+		const [goods] = await connection.execute(
+			`SELECT COUNT(*) AS count FROM goods WHERE country = ?`,
+			[kod]
+		);
+
+		if (goods[0].count > 0) {
+			return `Страна с id ${id} не может быть удалена, так как к ней прикреплены товары (${goods[0].count} шт.).`;
+		}
+
+		// 3️⃣ Если товаров нет, удаляем страну
+		const deleteCountryQuery = `DELETE FROM country WHERE id = ?`;
+		const [result] = await connection.execute(deleteCountryQuery, [id]);
+
+		return result.affectedRows > 0
+			? `Страна с id ${id} успешно удалена.`
+			: `Страна с id ${id} не найдена.`;
+
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
 	} finally {
 		await connection.end();
 	}
 }
+
 
 
 
@@ -281,34 +317,48 @@ export async function addCategory(massive) {
 }
 
 export async function editCategory(id, massive) {
+
 	const connection = await connectToDatabase();
 	try {
-		const query = `
-        UPDATE category
-        SET
-            name = ?,
-            kod = ?,
-            img = ? 
-        WHERE id = ?
-		`;
+		// 1️⃣ Получаем текущий `kod` перед обновлением
+		const [oldCategory] = await connection.execute(
+			`SELECT kod FROM category WHERE id = ?`,
+			[id]
+		);
 
-		// Формируем массив значений для обновления
-		const values = [
-			massive.name,
-			massive.kod,
-			massive.img,
-			id
-		];
-
-
-		// Выполняем обновление
-		const [result] = await connection.execute(query, values);
-		// Проверяем, обновлена ли строка
-		if (result.affectedRows > 0) {
-			return `Категория с id ${id} успешно обновлёна.`;
-		} else {
+		if (!oldCategory.length) {
 			return `Категория с id ${id} не найдена.`;
 		}
+
+		const oldKod = oldCategory[0].kod;
+		const newKod = massive.kod;
+
+		// 2️⃣ Обновляем категорию
+		const query = `
+            UPDATE category
+            SET name = ?, kod = ?, img = ?
+            WHERE id = ?
+        `;
+		const values = [massive.name, newKod, massive.img, id];
+
+		const [result] = await connection.execute(query, values);
+
+		// 3️⃣ Если `kod` изменился, обновляем у товаров
+		if (oldKod !== newKod) {
+			console.log(`Kod изменился: ${oldKod} → ${newKod}, обновляем товары...`);
+
+			const updateGoodsQuery = `
+                UPDATE goods
+                SET category = ?
+                WHERE category = ?
+            `;
+			await connection.execute(updateGoodsQuery, [newKod, oldKod]);
+		}
+
+		return result.affectedRows > 0
+			? `Категория с id ${id} успешно обновлена.`
+			: `Категория с id ${id} не найдена.`;
+
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных категории: ' + error.message);
 	} finally {
@@ -316,22 +366,41 @@ export async function editCategory(id, massive) {
 	}
 }
 
+
 export async function delCategory(id) {
 	const connection = await connectToDatabase();
 	try {
-		const query = `DELETE FROM category WHERE id = ?`;
-		const [result] = await connection.query(query, [id]);
-		if (result.affectedRows > 0) {
-			return `Категория с id ${id} успешно удалёна.`;
-		} else {
+		// 1️⃣ Получаем `kod` категории перед удалением
+		const [category] = await connection.execute(
+			`SELECT kod FROM category WHERE id = ?`,
+			[id]
+		);
+
+		if (!category.length) {
 			return `Категория с id ${id} не найдена.`;
 		}
+
+		const kod = category[0].kod;
+
+		// 2️⃣ Удаляем все товары, относящиеся к этой категории
+		const deleteGoodsQuery = `DELETE FROM goods WHERE category = ?`;
+		await connection.execute(deleteGoodsQuery, [kod]);
+
+		// 3️⃣ Удаляем саму категорию
+		const deleteCategoryQuery = `DELETE FROM category WHERE id = ?`;
+		const [result] = await connection.execute(deleteCategoryQuery, [id]);
+
+		return result.affectedRows > 0
+			? `Категория с id ${id} и все связанные товары успешно удалены.`
+			: `Категория с id ${id} не найдена.`;
+
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
 	} finally {
 		await connection.end();
 	}
 }
+
 
 export async function addPromo(massive){
 	const connection = await connectToDatabase();
