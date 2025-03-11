@@ -6,7 +6,15 @@ import upload from './upload.js'; // Импортируем multer
 //import './cronJobs.js';
 
 import cors from 'cors';
-import {cityRouter, goodsRouter, mailRouter, messageRouter, settingRouter, usersRouter} from "./routes/index.js"; // Импортируем бота
+import {
+	cityRouter,
+	goodsRouter,
+	langRouter,
+	mailRouter,
+	messageRouter,
+	settingRouter,
+	usersRouter
+} from "./routes/index.js"; // Импортируем бота
 
 dotenv.config();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +30,7 @@ app.use('/api/message', messageRouter);
 app.use('/api/city', cityRouter);
 app.use('/api/setting', settingRouter);
 app.use('/api/mail', mailRouter);
+app.use('/api/lang', langRouter);
 
 
 app.post('/api/upload', upload.single('image'), (req, res) => {
