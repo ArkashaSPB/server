@@ -4,7 +4,7 @@ import {getSahblonFunc, sendMail} from "../func/smtp.js";
 import {addHistoryFunc} from "../func/history.js";
 
 // Регистрация пользователя
-export const regUserFunc = async (password, email) => {
+export const regUserFunc = async (password, email, lang) => {
 	const connection = await connectToDatabase();
 	if(!email || !password){
 		return {status: false, message: 'Не указан Email или пароль'};
@@ -22,23 +22,18 @@ export const regUserFunc = async (password, email) => {
 
 		// Сохранение пользователя в базу данных
 		const [result] = await connection.query(
-			'INSERT INTO users (pass, mail, token) VALUES ( ?, ?, ?)',
-			[ password, email, token]
+			'INSERT INTO users (pass, mail, token, local) VALUES ( ?, ?, ?, ? )',
+			[ password, email, token, lang]
 		);
 
 		const userId = result.insertId
-		const shablon = await getSahblonFunc(1);
+		const shablon = await getSahblonFunc(1, lang);
 		if (shablon) {
-			const t = `
-        <p>Ваш пароль: <span style="font-size: 1.2rem">${password}</span></p>
-    `;
-			const s = 'Добро пожаловать';
-			const newText = shablon.text.replace('<body>', t);
+			const newText = shablon.text.replace('[var]', password);
 			sendMail(email, shablon.subject, newText);
 		}
 		const t = `${email} зарегистрировался`;
 		addHistoryFunc('Регистрация', t)
-
 		return {
 			status : true,
 			message: 'Пользователь успешно зарегистрирован',
@@ -54,7 +49,7 @@ export const regUserFunc = async (password, email) => {
 };
 
 
-export const getPassFunc = async (email) => {
+export const getPassFunc = async (email, lang) => {
 	const connection = await connectToDatabase();
 
 	try {
@@ -79,17 +74,12 @@ export const getPassFunc = async (email) => {
 			[newPassword, email]
 		);
 
-		const shablon = await getSahblonFunc(2);
+		const shablon = await getSahblonFunc(2, lang);
 		if (shablon) {
-			const t = `
-        <p>Ваш новый пароль: <span style="font-size: 1.2rem">${newPassword}</span></p>
-    `;
-			const newText = shablon.text.replace('<body>', t);
+			const newText = shablon.text.replace('[var]', newPassword);
 			sendMail(email, shablon.subject, newText);
 		}
-
-
-		return { success: true, message: "Пароль отправлен на почту" };
+		return { success: true, message: "Пароль отправлен на почту" }
 	} catch (error) {
 		throw new Error("Ошибка при работе с базой данных: " + error.message);
 	} finally {
@@ -132,7 +122,7 @@ export const checkUser = async (token) => {
 	const connection = await connectToDatabase();
 	try {
 		const [user] = await connection.query(
-			'SELECT id, mail, name FROM users WHERE token = ?',[token]
+			'SELECT id, mail, name, local FROM users WHERE token = ?',[token]
 		)
 		if(user.length > 0) {
 			return user[0]
@@ -144,5 +134,24 @@ export const checkUser = async (token) => {
 		} finally {
 			await connection.end();
 		}
+
+}
+
+export const updateLangFunc = async (token, lang) => {
+	const connection = await connectToDatabase();
+	try {
+		const [user] = await connection.query(
+			'SELECT id, mail, name, local FROM users WHERE token = ?',[token]
+		)
+		if(user.length > 0) {
+			return user[0]
+		}	else{
+			return []
+		}
+	} catch (error) {
+		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
+	} finally {
+		await connection.end();
+	}
 
 }

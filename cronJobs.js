@@ -55,11 +55,11 @@ export  const checkTron = async  () => {
 								);
 								await connection.execute(`UPDATE orders SET oplata = 1 WHERE id = ${orderId}`)
 								const [userEmailRow] = await connection.execute(
-									`SELECT users.mail FROM orders INNER JOIN users ON users.id = orders.user WHERE orders.id = ?`,
+									`SELECT users.mail, orders.local FROM orders INNER JOIN users ON users.id = orders.user WHERE orders.id = ?`,
 									[orderId]
 								);
 								const userEmail = userEmailRow.length > 0 ? userEmailRow[0].mail : null; // Проверка на наличие email
-
+								const local = userEmailRow.length > 0 ? userEmailRow[0].local : 'ru';
 								const [adminRow] = await connection.execute(`SELECT admin FROM setting`);
 								const admin = adminRow.length > 0 ? adminRow[0].admin : null; // Проверка на наличие admin
 
@@ -67,23 +67,32 @@ export  const checkTron = async  () => {
 								// 	console.error("❌ Ошибка: Не найден email пользователя или admin.");
 								// 	return;
 								// }
-								const shablonAdmin = await getSahblonFunc(4);
+								const shablonAdmin = await getSahblonFunc(4,local);
 								if (shablonAdmin && admin) {
-									const t = `<p>Оплата по заказу ${orderId} от пользователя ${userEmail} получена.</p>
-									<p>tid = <span style="font-size: 1.2rem">${transaction.transaction_id}</span></p>`;
-									const newText = shablonAdmin.text.replace('<body>', t);
+
+									const newText = shablonAdmin.text
+										.replace('[order]', orderId)
+										.replace('[trid]', transaction.transaction_id)
+										.replace('[email]', userEmail)
 									sendMail(admin, shablonAdmin.subject, newText);
+									console.log('newText: ',newText, local)
 								}
+
+
+
 
 								const shablonUser = await getSahblonFunc(6);
 								if (shablonUser && userEmail) {
-									const t2 =
-										`<p>Ваш заказ ${orderId} полностью оплачен</p>
-										<p>Мы свяжемся с вами в самое ближайшее время.</p>`;
-									const newText2 = shablonUser.text.replace('<body>', t2);
+									const newText2 = shablonUser.text
+										.replace('[order]', orderId)
+										.replace('[trid]', transaction.transaction_id)
+										.replace('[email]', userEmail)
+
+									console.log('newText2: ',newText2)
+
+
 									sendMail(userEmail, shablonUser.subject, newText2);
 								}
-
 								const t = `Оплата по ${orderId} от ${userEmail} получена`
 								addHistoryFunc('Получение оплаты', t)
 
@@ -103,5 +112,5 @@ checkTron();
 // Пример задания, которое выполняется каждую минуту
 cron.schedule('* * * * *', () => {
 	checkTron()
-	console.log('Чекнул')
+	console.log('Чекнулся')
 });

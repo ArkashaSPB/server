@@ -6,9 +6,9 @@ import {authUserFunc, checkUser, getPassFunc, regUserFunc} from "../services/aut
 const router = express.Router();
 
 router.post('/reg', async (req, res) => {
-	const {  password, email } = req.body;
+	const {  password, email, lang } = req.body;
 	try {
-		const response = await regUserFunc( password, email);
+		const response = await regUserFunc( password, email, lang);
 		res.json(response);
 	} catch (error) {
 		res.status(400).json({ error: error.message });
@@ -28,9 +28,9 @@ router.post('/auth', async (req, res) => {
 });
 
 router.patch('/auth', async (req, res) => {
-	const { email} = req.body;
+	const { email,lang } = req.body;
 	try {
-		const response = await getPassFunc(email);
+		const response = await getPassFunc(email, lang);
 		res.json(response);
 	} catch (error) {
 		res.status(401).json({ error: error.message });
@@ -41,8 +41,17 @@ router.patch('/auth', async (req, res) => {
 
 router.get('/check/:token', async (req, res) => {
 	const { token } = req.params;
+	try {
+		const response = await checkUser(token);
+		res.json(response);
+	} catch (error) {
+		res.status(401).json({ error: error.message });
+	}
+});
 
-
+router.get('/lang/:token', async (req, res) => {
+	const { token } = req.params;
+	const {lang} = req.body.lang;
 	try {
 		const response = await checkUser(token);
 		res.json(response);

@@ -1,9 +1,53 @@
 import express from "express";
-import { getAllMails, getMailById, updateMail } from "../services/mailFunc.js";
+import {
+	addColumnFunc,
+	getAllMails,
+	getLanguagesList,
+	getMailById,
+	removeColumnFunc,
+	updateMail
+} from "../services/mailFunc.js";
 
 const router = express.Router();
 
 // 📩 Получить все письма
+
+
+
+router.post("/column", async (req, res) => {
+	try {
+		const { lang } = req.body;
+		const result = await addColumnFunc(lang);
+		res.status(200).json(result);
+	} catch (error) {
+		console.error("Ошибка при обновлении письма:", error);
+		res.status(500).json({ message: "Ошибка сервера" });
+	}
+});
+
+router.delete("/column/:lang", async (req, res) => {
+	try {
+		const  lang  = req.params.lang;
+		const result = await removeColumnFunc(lang);
+		res.status(200).json(result);
+	} catch (error) {
+		console.error("Ошибка при обновлении письма:", error);
+		res.status(500).json({ message: "Ошибка сервера" });
+	}
+});
+
+router.get("/column/", async (req, res) => {
+	try {
+		console.log(33)
+		const result = await getLanguagesList();
+		res.status(200).json(result);
+	} catch (error) {
+		console.error("Ошибка при обновлении письма:", error);
+		res.status(500).json({ message: "Ошибка сервера" });
+	}
+});
+
+
 router.get("/", async (req, res) => {
 	try {
 		const mails = await getAllMails();
@@ -30,18 +74,19 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
 	try {
 		const { id } = req.params;
-		const { name, text, subject } = req.body;
 
-		if (!name || !text || !subject) {
-			return res.status(400).json({ message: "Все поля (name, text, subject) обязательны" });
-		}
+		// Выполняем обновление
+		const result = await updateMail(id, req.body);
 
-		const result = await updateMail(id, { name, text, subject });
+		// Отправляем успешный ответ
 		res.status(200).json(result);
 	} catch (error) {
 		console.error("Ошибка при обновлении письма:", error);
 		res.status(500).json({ message: "Ошибка сервера" });
 	}
 });
+
+
+
 
 export default router;

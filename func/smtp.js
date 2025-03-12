@@ -54,14 +54,31 @@ export const sendMail = async (toEmail, subject, text) => {
 		const info = await transporter.sendMail(mailOptions);
 		console.log('Письмо отправлено: ', info.response);
 	} catch (error) {
-		console.log('Ошибка при получении или отправке письма: ', error);
+		if (error.code === 'ECONNREFUSED') {
+			console.log('Ошибка: порт закрыт');
+		} else {
+			console.log('Ошибка при отправке письма: ', error);
+		}
 	}
 };
 
-export const getSahblonFunc = async (id) => {
+export const getSahblonFunc = async (id, lang = 'ru') => {
 	const connection = await connectToDatabase();
 	try {
-		const [res] = await connection.execute('SELECT * FROM email WHERE id = ?', [id]);
+		let query;
+		if (lang === 'ru') {
+			query = 'SELECT text, subject FROM email WHERE id = ?';
+		} else {
+			// Проверяем, существует ли колонка text_${lang}
+			const [columns] = await connection.execute(
+				"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'email' AND COLUMN_NAME = ?",
+				[`text_${lang}`]
+			);
+			query = columns.length > 0
+				? `SELECT text_${lang} AS text, subject_${lang} AS subject FROM email WHERE id = ?`
+				: 'SELECT text, subject FROM email WHERE id = ?';
+		}
+		const [res] = await connection.execute(query, [id]);
 		return res.length > 0 ? res[0] : null;
 	} catch (error) {
 		throw new Error('Ошибка при запросе к базе данных: ' + error.message);
@@ -69,3 +86,4 @@ export const getSahblonFunc = async (id) => {
 		await connection.end();
 	}
 };
+

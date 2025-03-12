@@ -42,8 +42,7 @@ export const addOrder = async (orderData) => {
 	const connection = await connectToDatabase();
 
 	try {
-		const { user, price, count, items } = orderData;
-
+		const { user, price, count, items, local } = orderData;
 		// Проверяем, существует ли пользователь
 		const [existingUser] = await connection.query('SELECT * FROM users WHERE id = ?', [user]);
 		if (existingUser.length === 0) {
@@ -52,8 +51,8 @@ export const addOrder = async (orderData) => {
 
 		// Вставляем заказ в таблицу orders
 		const [orderResult] = await connection.query(
-			'INSERT INTO orders (user, price, count) VALUES (?, ?, ?)',
-			[user, price, count]
+			'INSERT INTO orders (user, price, count, local) VALUES (?, ?, ?, ?)',
+			[user, price, count, local]
 		);
 
 		const orderId = orderResult.insertId; // Получаем ID созданного заказа
@@ -73,60 +72,48 @@ export const addOrder = async (orderData) => {
 		const [email] = await connection.query(`SELECT mail FROM users WHERE id = ?`, [user]);
 
 		if (email[0]?.mail) {
-			const shablon = await getSahblonFunc(3);
-			if (shablon) {
-				// Создаем HTML-таблицу с товарами
+
+			const stroka = await getSahblonFunc(7, local);
+			const  strokaT = stroka.text
+
 				const tableRows = items
-					.map(
-						(item) => `
-						<tr>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.title}</td>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.price}$</td>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.quantity}</td>
-							<td style="border: 1px solid #ddd; padding: 8px;">${item.price * item.quantity}$</td>
-						</tr>`
+					.map(item =>
+						strokaT
+							.replace('[title]', item.title)
+							.replace('[price]', item.price + '$')
+							.replace('[quantity]', item.quantity)
+							.replace('[itogo]', item.price * item.quantity)
 					)
-					.join("");
-
-				const t = `
-					<h3 style="text-align: center;">Ваш заказ №${orderId} оформлен</h3>
-					<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-						<thead>
-							<tr>
-								<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4;">Название</th>
-								<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4;">Цена</th>
-								<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4;">Кол-во</th>
-								<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4;">Сумма</th>
-							</tr>
-						</thead>
-						<tbody>
-							${tableRows}
-						</tbody>
-						<tfoot>
-							<tr>
-								<td colspan="2" style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold;">Итого:</td>
-								<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${count}</td>
-								<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${newPrice}</td>
-							</tr>
-						</tfoot>
-					</table>
-				`;
-				const tu = `<p>Ваш заказ ${orderId} создан.</p> 
-				${t}`
-				const newText = shablon.text.replace('<body>', tu);
-				sendMail(email[0].mail, shablon.subject, newText);
+					.join('');
+			const shablon = await getSahblonFunc(3,local);
+			if (shablon) {
+				 const newText = shablon.text
+					.replace('[row]', tableRows)
+					.replace('[orderId]', orderId)
+					.replace('[count]', count)
+					.replace('[newPrice]', newPrice)
+					console.log(newText)
+					sendMail(email[0].mail, shablon.subject, newText);
 
 
+				 //письмо админу
 				const shablon2 = await getSahblonFunc(5);
 				const [adminRow] = await connection.execute(`SELECT admin FROM setting`);
-				const admin = adminRow.length > 0 ? adminRow[0].admin : null; // Проверка на наличие admin
-				const t2 = `<p>Заказ ${orderId} от пользователя ${email[0].mail} создан</p>
-				 ${t}`
-				const newText2  = shablon2.text.replace('<body>', t2);
+				const admin = adminRow.length > 0 ? adminRow[0].admin : null;
+				const newText2  = shablon2.text
+					.replace('[email]', email[0].mail)
+					.replace('[orderId]', orderId)
+					.replace('[table]', newText);
+
+				console.log(newText2)
+
 				sendMail(admin, shablon2.subject, newText2);
 
+
+				//в историю
 				const name = `${email[0].mail} создал заказ ${orderId}`;
 				addHistoryFunc('Создание заказа', name)
+
 
 			}
 		}
