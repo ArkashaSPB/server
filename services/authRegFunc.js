@@ -76,7 +76,11 @@ export const getPassFunc = async (email, lang) => {
 
 		const shablon = await getSahblonFunc(2, lang);
 		if (shablon) {
+
+
 			const newText = shablon.text.replace('[var]', newPassword);
+			console.log("Шаблон до:", shablon.text);
+			console.log("Шаблон после:", newText);
 			sendMail(email, shablon.subject, newText);
 		}
 		return { success: true, message: "Пароль отправлен на почту" }
